@@ -1,0 +1,1921 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Try to Sleep</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:#080d1a; --surface:#0e1628; --card:#131d35; --border:#1e2d4d;
+      --accent:#4f8ef7; --accent2:#7b5ea7; --glow:#4f8ef740;
+      --text:#e8edf8; --muted:#6b7a99; --success:#3ecf8e; --warning:#f5a623;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow:hidden;user-select:none}
+    #app{display:flex;flex-direction:column;height:100dvh;position:relative}
+
+    .ambient{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+    .ambient::before{content:'';position:absolute;top:-30%;left:-20%;width:70%;height:70%;background:radial-gradient(circle,#1a2f6640 0%,transparent 70%);animation:drift 12s ease-in-out infinite alternate}
+    .ambient::after{content:'';position:absolute;bottom:-20%;right:-10%;width:60%;height:60%;background:radial-gradient(circle,#4f1a6620 0%,transparent 70%);animation:drift 16s ease-in-out infinite alternate-reverse}
+    @keyframes drift{from{transform:translate(0,0) scale(1)}to{transform:translate(4%,6%) scale(1.08)}}
+
+    .screen{display:none;flex:1;overflow-y:auto;overflow-x:hidden;padding:0 0 90px;position:relative;z-index:1;-webkit-overflow-scrolling:touch}
+    .screen.active{display:block;animation:fadeUp .35s ease}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+    .top-bar{padding:56px 24px 20px;display:flex;justify-content:space-between;align-items:flex-end}
+    .top-bar .greeting{font-family:'Syne',sans-serif;font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.12em;text-transform:uppercase}
+    .top-bar .title{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;line-height:1.1;margin-top:4px}
+    .avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:15px}
+
+    .card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:20px;margin:0 16px 12px;position:relative;overflow:hidden}
+    .card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,#ffffff06 0%,transparent 60%);pointer-events:none}
+    .card-label{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+
+    .hero-card{margin:0 16px 12px;background:linear-gradient(135deg,#0e1e3f,#1a1535);border:1px solid #2a3a5e;border-radius:24px;padding:28px 24px;position:relative;overflow:hidden}
+    .hero-card::after{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,#4f8ef720,transparent 70%)}
+    .big-stat{font-family:'Syne',sans-serif;font-size:64px;font-weight:800;background:linear-gradient(135deg,#fff 0%,#4f8ef7 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1}
+    .unit{font-family:'Syne',sans-serif;font-size:20px;font-weight:600;color:var(--muted);margin-left:4px}
+
+    .phases{display:flex;gap:3px;height:8px;border-radius:8px;overflow:hidden;margin-top:16px}
+    .phase-deep{background:var(--accent);border-radius:8px 0 0 8px}
+    .phase-light{background:#7b9fd4}
+    .phase-rem{background:var(--accent2)}
+    .phase-awake{background:var(--border);border-radius:0 8px 8px 0}
+    .phase-legend{display:flex;gap:16px;margin-top:10px;flex-wrap:wrap}
+    .legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
+    .legend-dot{width:8px;height:8px;border-radius:50%}
+
+    .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 16px 12px}
+    .stat-tile{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px 16px}
+    .stat-tile .val{font-family:'Syne',sans-serif;font-size:28px;font-weight:800}
+    .stat-tile .lbl{font-size:12px;color:var(--muted);margin-top:4px}
+    .ab{color:var(--accent)!important}.ag{color:var(--success)!important}.ap{color:var(--accent2)!important}.aw{color:var(--warning)!important}
+
+    .section-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:16px 24px 8px}
+    .week-chart{display:flex;align-items:flex-end;gap:8px;padding:0 24px;height:90px}
+    .bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+    .bar{width:100%;border-radius:6px 6px 2px 2px;background:var(--border);min-height:4px}
+    .bar.good{background:linear-gradient(180deg,var(--accent),#2a5cb8)}
+    .bar.ok{background:linear-gradient(180deg,var(--accent2),#4a2870)}
+    .bar.bad{background:linear-gradient(180deg,var(--warning),#a06010)}
+    .bar.today{box-shadow:0 0 10px var(--glow)}
+    .bar-day{font-size:10px;color:var(--muted);font-weight:500}
+
+    /* ALARM */
+    .alarm-hero{margin:0 16px 12px;background:linear-gradient(135deg,#0a1a10,#0d1520);border:1px solid #1a3a25;border-radius:24px;padding:28px 24px;text-align:center}
+    .clock-display{font-family:'Syne',sans-serif;font-size:72px;font-weight:800;letter-spacing:-2px;background:linear-gradient(135deg,#fff 0%,var(--success) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .clock-label{font-size:13px;color:var(--muted);margin-top:4px}
+    .music-pill{display:inline-flex;align-items:center;gap:6px;background:#0e1f0e;border:1px solid #1e4020;border-radius:20px;padding:6px 14px 6px 10px;font-size:12px;color:var(--success);margin-top:8px;max-width:100%;overflow:hidden}
+    .music-pill span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    .alarm-list{padding:0 16px}
+    .alarm-item{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:16px 20px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;transition:border-color .2s,box-shadow .2s}
+    .alarm-item.active-alarm{border-color:var(--accent);box-shadow:0 0 0 1px #4f8ef722}
+    .alarm-time{font-family:'Syne',sans-serif;font-size:32px;font-weight:800}
+    .alarm-time.off{color:var(--muted)}
+    .alarm-info{font-size:12px;color:var(--muted);margin-top:2px}
+    .alarm-music{font-size:11px;color:var(--success);margin-top:4px}
+
+    .toggle{width:48px;height:28px;border-radius:14px;border:none;cursor:pointer;position:relative;transition:background .3s;flex-shrink:0}
+    .toggle.on{background:var(--accent)}.toggle.off{background:var(--border)}
+    .toggle::after{content:'';position:absolute;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .3s}
+    .toggle.on::after{left:23px}.toggle.off::after{left:3px}
+
+    .add-btn{display:flex;align-items:center;justify-content:center;gap:8px;margin:8px 16px 0;padding:16px;background:transparent;border:1.5px dashed var(--border);border-radius:18px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;transition:border-color .2s,color .2s;width:calc(100% - 32px)}
+    .add-btn:active{border-color:var(--accent);color:var(--accent)}
+
+    .vol-info{margin:16px 16px 0;padding:14px 18px;background:var(--card);border:1px solid var(--border);border-radius:16px;display:flex;justify-content:space-between;align-items:center}
+
+    /* MODAL */
+    .modal-overlay{position:fixed;inset:0;background:#00000088;z-index:200;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .3s;backdrop-filter:blur(4px)}
+    .modal-overlay.open{opacity:1;pointer-events:all}
+    .modal-sheet{background:#0f1830;border:1px solid var(--border);border-radius:28px 28px 0 0;padding:28px 24px 40px;width:100%;transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);max-height:90dvh;overflow-y:auto}
+    .modal-overlay.open .modal-sheet{transform:translateY(0)}
+    .modal-handle{width:36px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 24px}
+    .modal-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:20px}
+    .field-label{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:block}
+
+    .time-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:20px}
+    .time-row input{background:var(--card);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:'Syne',sans-serif;font-size:48px;font-weight:800;width:90px;text-align:center;padding:12px 0;-moz-appearance:textfield}
+    .time-row input::-webkit-outer-spin-button,.time-row input::-webkit-inner-spin-button{-webkit-appearance:none}
+    .time-row input:focus{outline:none;border-color:var(--accent)}
+    .time-sep{font-family:'Syne',sans-serif;font-size:48px;font-weight:800;color:var(--muted)}
+
+    .days-row{display:flex;gap:8px;margin-bottom:20px}
+    .day-btn{flex:1;padding:8px 4px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:all .2s}
+    .day-btn.sel{background:#1a2f5a;border-color:var(--accent);color:var(--accent)}
+
+    .row-setting{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 18px;margin-bottom:12px}
+    .row-setting select{background:transparent;border:none;color:var(--accent);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer}
+    .row-setting select option{background:var(--card);color:var(--text)}
+
+    .music-row{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:border-color .2s}
+    .music-row:active{border-color:var(--accent)}
+    .music-chosen{font-size:13px;color:var(--success);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70%}
+    .music-ph{font-size:13px;color:var(--muted)}
+    #fileInput{display:none}
+
+    .vol-row{margin-bottom:20px}
+    .vol-slider{width:100%;accent-color:var(--accent);margin-top:8px}
+
+    .save-btn{width:100%;padding:18px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:16px;color:#fff;font-family:'Syne',sans-serif;font-size:16px;font-weight:700;cursor:pointer}
+    .save-btn:active{opacity:.85}
+
+    /* RINGING */
+    #ring-overlay{position:fixed;inset:0;z-index:999;display:none;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 30%,#0d2040,#050a14)}
+    #ring-overlay.show{display:flex}
+    .ring-pulse{width:180px;height:180px;border-radius:50%;background:#4f8ef711;position:absolute;animation:rpulse 1.8s ease-out infinite}
+    .ring-pulse:nth-child(2){animation-delay:.6s}.ring-pulse:nth-child(3){animation-delay:1.2s}
+    @keyframes rpulse{0%{transform:scale(.6);opacity:.6}100%{transform:scale(2.2);opacity:0}}
+    .ring-time{font-family:'Syne',sans-serif;font-size:80px;font-weight:800;letter-spacing:-3px;background:linear-gradient(135deg,#fff,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+    .ring-sub{font-size:14px;color:var(--muted);margin-bottom:6px}
+    .ring-music{display:flex;align-items:center;gap:8px;color:var(--success);font-size:13px;margin-bottom:44px}
+    .ring-note{animation:bnc .6s ease-in-out infinite alternate;font-size:20px}
+    @keyframes bnc{from{transform:translateY(0)}to{transform:translateY(-5px)}}
+
+    .swipe-track{width:80%;max-width:320px;height:64px;background:var(--card);border:1px solid var(--border);border-radius:32px;position:relative;overflow:hidden;margin-bottom:20px}
+    .swipe-lbl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted);pointer-events:none;letter-spacing:.05em}
+    .swipe-thumb{width:56px;height:56px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:50%;position:absolute;top:3px;left:4px;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:grab;box-shadow:0 0 20px var(--glow);touch-action:none;transition:left .3s}
+    .snooze-btn{background:transparent;border:1px solid var(--border);border-radius:14px;padding:12px 28px;color:var(--muted);font-size:14px;cursor:pointer}
+
+    /* VOL MODAL */
+    .vol-modal{position:fixed;inset:0;background:#000000aa;z-index:300;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+    .vol-modal.open{display:flex}
+    .vol-modal-inner{background:#0f1830;border:1px solid var(--border);border-radius:24px;padding:28px 24px;width:calc(100% - 48px);max-width:360px}
+    .vol-modal-val{font-family:'Syne',sans-serif;font-size:48px;font-weight:800;color:var(--accent);text-align:center;margin:12px 0}
+    .vol-modal-btn{width:100%;padding:14px;background:var(--accent);border:none;border-radius:14px;color:#fff;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:16px}
+
+    /* STATS */
+    .score-ring-wrap{display:flex;justify-content:center;padding:8px 0 4px}
+    .score-ring{position:relative;width:140px;height:140px}
+    .score-ring svg{transform:rotate(-90deg)}
+    .score-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+    .score-num{font-family:'Syne',sans-serif;font-size:40px;font-weight:800}
+    .score-lbl{font-size:11px;color:var(--muted);letter-spacing:.08em}
+
+    /* SETTINGS */
+    .settings-list{padding:0 16px}
+    .settings-item{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px 20px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:border-color .2s}
+    .settings-item:active{border-color:var(--accent)}
+    .s-left{display:flex;align-items:center;gap:14px}
+    .s-icon{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px}
+    .s-title{font-size:15px;font-weight:500}
+    .s-sub{font-size:12px;color:var(--muted);margin-top:2px}
+    .chevron{color:var(--muted);font-size:18px}
+    .badge{display:inline-flex;align-items:center;gap:5px;background:#0a1f12;border:1px solid #1e4530;border-radius:20px;padding:4px 12px;font-size:11px;color:var(--success);font-weight:600}
+    .dot-live{width:7px;height:7px;border-radius:50%;background:var(--success);animation:pulse 2s infinite}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+
+    /* NAV */
+    nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:#0b1020ee;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;padding:0 8px;padding-bottom:env(safe-area-inset-bottom,8px)}
+    .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 6px;cursor:pointer;transition:color .2s;color:var(--muted);font-size:10px;font-weight:500;border:none;background:none}
+    .nav-item svg{width:22px;height:22px;transition:transform .2s}
+    .nav-item.active{color:var(--accent)}
+    .nav-item.active svg{transform:scale(1.15)}
+    .nav-dot{width:4px;height:4px;border-radius:50%;background:var(--accent);opacity:0;transition:opacity .2s}
+    .nav-item.active .nav-dot{opacity:1}
+
+    /* SLEEP TRACKING */
+    .sleep-hero{margin:0 16px 12px;background:linear-gradient(135deg,#06101e,#100820);border:1px solid #1e2d4d;border-radius:24px;padding:28px 24px;text-align:center;position:relative;overflow:hidden}
+    .sleep-hero::after{content:'';position:absolute;top:-60px;left:50%;transform:translateX(-50%);width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,#4f8ef710,transparent 70%)}
+
+    /* Moon animation */
+    .moon-wrap{display:flex;justify-content:center;margin-bottom:16px}
+    .moon{font-size:52px;animation:moonFloat 4s ease-in-out infinite alternate}
+    @keyframes moonFloat{from{transform:translateY(0) rotate(-5deg)}to{transform:translateY(-8px) rotate(5deg)}}
+
+    .sleep-status{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px}
+    .sleep-sub{font-size:13px;color:var(--muted);margin-bottom:20px}
+
+    /* Big start button */
+    .start-sleep-btn{width:100%;padding:18px;background:linear-gradient(135deg,#1a3a6a,#2a1a4a);border:1px solid #2a4a8a;border-radius:18px;color:var(--text);font-family:'Syne',sans-serif;font-size:16px;font-weight:700;cursor:pointer;transition:all .3s;position:relative;overflow:hidden}
+    .start-sleep-btn:active{transform:scale(.98)}
+    .start-sleep-btn.tracking{background:linear-gradient(135deg,#0a2a0a,#0a1a0a);border-color:#1a4a1a;color:var(--success)}
+    .start-sleep-btn.waiting{background:linear-gradient(135deg,#2a1a00,#1a0a00);border-color:#4a3a00;color:var(--warning)}
+
+    /* Sensor indicators */
+    .sensors-row{display:flex;gap:10px;margin:0 16px 12px}
+    .sensor-card{flex:1;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px 12px;text-align:center;transition:border-color .3s,background .3s}
+    .sensor-card.active{border-color:var(--success);background:#0a1f0a}
+    .sensor-card.motion{border-color:var(--accent);background:#0a1030}
+    .sensor-icon{font-size:22px;margin-bottom:6px}
+    .sensor-label{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.05em}
+    .sensor-val{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-top:4px;color:var(--text)}
+    .sensor-val.active{color:var(--success)}
+    .sensor-val.alert{color:var(--warning)}
+
+    /* Live waveform */
+    .waveform{display:flex;align-items:center;justify-content:center;gap:3px;height:32px;margin:8px 16px}
+    .wave-bar{width:4px;background:var(--border);border-radius:4px;transition:height .15s ease}
+    .waveform.live .wave-bar{background:var(--success)}
+
+    /* Timeline */
+    .timeline{margin:0 16px 12px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:16px 20px}
+    .timeline-bar{height:10px;border-radius:6px;background:var(--border);overflow:hidden;margin-top:10px;position:relative}
+    .timeline-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent2),var(--accent));transition:width .5s ease}
+    .timeline-markers{display:flex;justify-content:space-between;margin-top:6px}
+    .timeline-marker{font-size:10px;color:var(--muted)}
+
+    /* Clips */
+    .clip-item{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px 18px;margin:0 16px 10px;display:flex;align-items:center;gap:14px}
+    .clip-play{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;transition:transform .2s}
+    .clip-play:active{transform:scale(.9)}
+    .clip-info{flex:1;min-width:0}
+    .clip-time{font-family:'Syne',sans-serif;font-size:15px;font-weight:700}
+    .clip-desc{font-size:12px;color:var(--muted);margin-top:2px}
+    .clip-badge{font-size:11px;padding:3px 10px;border-radius:10px;font-weight:600}
+    .clip-badge.sound{background:#1a2a00;color:#a0d030;border:1px solid #2a4a00}
+    .clip-badge.move{background:#001a2a;color:#30a0d0;border:1px solid #003a5a}
+    .clip-badge.both{background:#1a0a2a;color:var(--accent2);border:1px solid #3a1a5a}
+
+    /* Notif coucher banner */
+    .bedtime-banner{margin:0 16px 12px;background:linear-gradient(135deg,#1a1000,#0e1a00);border:1px solid #3a2a00;border-radius:20px;padding:18px 20px;display:flex;align-items:center;gap:14px}
+    .bedtime-banner.hidden{display:none}
+    .bedtime-icon{font-size:28px;flex-shrink:0}
+    .bedtime-text .bt-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--warning)}
+    .bedtime-text .bt-sub{font-size:12px;color:var(--muted);margin-top:3px}
+    .bedtime-actions{display:flex;gap:8px;margin-top:12px}
+    .bt-btn{flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:'DM Sans',sans-serif}
+    .bt-btn.primary{background:var(--warning);color:#000}
+    .bt-btn.ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
+
+    /* Countdown to bedtime */
+    .bedtime-countdown{font-family:'Syne',sans-serif;font-size:13px;color:var(--warning);font-weight:700}
+    .sensor-mode-btn{flex:1;padding:8px 4px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;text-align:center;transition:all .2s;font-family:'DM Sans',sans-serif}
+    .sensor-mode-btn.sel{background:#1a2f5a;border-color:var(--accent);color:var(--accent)}
+    .save-btn.saved{background:var(--border)!important;color:var(--muted)!important;cursor:default;pointer-events:none}
+
+    /* MORNING CHECKIN */
+    .checkin-overlay{position:fixed;inset:0;background:#00000099;z-index:500;display:none;align-items:flex-end;backdrop-filter:blur(6px)}
+    .checkin-overlay.open{display:flex;animation:fadeUp .3s ease}
+    .checkin-sheet{background:linear-gradient(180deg,#0d1628,#080d1a);border:1px solid var(--border);border-radius:28px 28px 0 0;padding:28px 24px 44px;width:100%;max-height:92dvh;overflow-y:auto}
+    .checkin-handle{width:36px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 20px}
+    .checkin-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:4px}
+    .checkin-sub{font-size:13px;color:var(--muted);margin-bottom:24px}
+
+    /* Humeur emojis */
+    .mood-row{display:flex;gap:10px;margin-bottom:24px}
+    .mood-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 4px;background:var(--card);border:1px solid var(--border);border-radius:16px;cursor:pointer;transition:all .2s;font-size:28px}
+    .mood-btn span{font-size:11px;color:var(--muted);font-weight:600}
+    .mood-btn.sel{border-color:var(--accent);background:#0e1e3f;box-shadow:0 0 0 1px #4f8ef733}
+
+    /* Inputs bio */
+    .bio-row{display:flex;gap:10px;margin-bottom:16px}
+    .bio-field{flex:1;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px}
+    .bio-field label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px}
+    .bio-field input{background:transparent;border:none;color:var(--text);font-family:'Syne',sans-serif;font-size:22px;font-weight:800;width:100%;outline:none;-moz-appearance:textfield}
+    .bio-field input::-webkit-outer-spin-button,.bio-field input::-webkit-inner-spin-button{-webkit-appearance:none}
+    .bio-field .bio-unit{font-size:11px;color:var(--muted);margin-top:2px}
+
+    /* Note libre */
+    .note-field{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:20px}
+    .note-field textarea{background:transparent;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;width:100%;outline:none;resize:none;min-height:60px;line-height:1.5}
+    .note-field textarea::placeholder{color:var(--muted)}
+
+    .checkin-actions{display:flex;gap:10px}
+    .checkin-save{flex:3;padding:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:16px;color:#fff;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer}
+    .checkin-skip{flex:1;padding:16px;background:transparent;border:1px solid var(--border);border-radius:16px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer}
+
+    /* STATS TABS */
+    .stats-tab{flex:1;padding:9px 4px;background:var(--card);border:1px solid var(--border);border-radius:12px;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+    .stats-tab.active{background:#1a2f5a;border-color:var(--accent);color:var(--accent)}
+    .score-ring{position:relative;width:110px;height:110px;flex-shrink:0}
+    .score-ring svg{transform:rotate(-90deg)}
+    .score-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+    .score-num{font-family:'Syne',sans-serif;font-size:32px;font-weight:800}
+    .score-lbl{font-size:11px;color:var(--muted)}
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="ambient"></div>
+
+  <!-- ACCUEIL -->
+  <div class="screen active" id="screen-home">
+    <div class="top-bar">
+      <div><div class="greeting">Try to Sleep</div><div class="title">Bonne nuit ?&nbsp;🌙</div></div>
+      <div class="avatar" onclick="goTo('profile', document.querySelector('[data-nav=profile]'))" style="cursor:pointer">T</div>
+    </div>
+    <div class="hero-card">
+      <div class="card-label">Dernière nuit</div>
+      <div><span class="big-stat">7</span><span class="unit">h 42</span></div>
+      <div style="font-size:13px;color:#6b7a99;margin-top:6px">22:47 → 06:29 · Qualité <span style="color:var(--success);font-weight:600">84 %</span></div>
+      <div class="phases" style="margin-top:18px">
+        <div class="phase-deep" style="flex:2.1"></div><div class="phase-light" style="flex:3.4"></div>
+        <div class="phase-rem" style="flex:1.8"></div><div class="phase-awake" style="flex:.6"></div>
+      </div>
+      <div class="phase-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Profond 2h05</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#7b9fd4"></div>Léger 3h22</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>REM 1h48</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--border)"></div>Éveil 27min</div>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-tile"><div class="val ab">62</div><div class="lbl">FC moyenne · bpm</div></div>
+      <div class="stat-tile"><div class="val ag">96%</div><div class="lbl">SpO₂ moyenne</div></div>
+      <div class="stat-tile"><div class="val ap">14</div><div class="lbl">Cycles complets</div></div>
+      <div class="stat-tile"><div class="val aw">−18min</div><div class="lbl">Vs objectif</div></div>
+    </div>
+    <div class="section-title">Cette semaine</div>
+    <div class="week-chart" id="homeWeekBars">
+      <div class="bar-wrap"><div class="bar" style="height:4%"></div><div class="bar-day">L</div></div>
+      <div class="bar-wrap"><div class="bar" style="height:4%"></div><div class="bar-day">M</div></div>
+      <div class="bar-wrap"><div class="bar" style="height:4%"></div><div class="bar-day">M</div></div>
+      <div class="bar-wrap"><div class="bar" style="height:4%"></div><div class="bar-day">J</div></div>
+      <div class="bar-wrap"><div class="bar" style="height:4%"></div><div class="bar-day">V</div></div>
+      <div class="bar-wrap"><div class="bar" style="height:4%"></div><div class="bar-day">S</div></div>
+      <div class="bar-wrap"><div class="bar" style="height:4%"></div><div class="bar-day" style="color:var(--accent)">A</div></div>
+    </div>
+  </div>
+
+  <!-- ALARME -->
+  <div class="screen" id="screen-alarm">
+    <div class="top-bar">
+      <div><div class="greeting">Réveil</div><div class="title" id="nextTitle">Aucune alarme</div></div>
+    </div>
+    <div class="alarm-hero">
+      <div class="clock-display" id="nextTime">--:--</div>
+      <div class="clock-label" id="nextCD">Active une alarme pour commencer</div>
+      <div id="nextMusic" style="display:none" class="music-pill"><span>🎵</span><span id="nextMusicName"></span></div>
+    </div>
+    <div class="alarm-list" id="alarmList"></div>
+    <button class="add-btn" onclick="openModal()">＋ Nouvelle alarme</button>
+    <div class="vol-info">
+      <div>
+        <div style="font-size:14px;font-weight:500">🔊 Volume progressif</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Montée douce sur 30 secondes</div>
+      </div>
+      <div style="font-size:13px;color:var(--accent);font-weight:600" id="volDisplay">Max : 80%</div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="screen" id="screen-stats">
+    <div class="top-bar"><div><div class="greeting">Analyse</div><div class="title">Statistiques</div></div></div>
+
+    <!-- Tabs semaine / mois / mois précédent -->
+    <div style="display:flex;gap:8px;padding:0 16px 4px">
+      <button class="stats-tab active" data-tab="week" onclick="switchTab('week',this)">Semaine</button>
+      <button class="stats-tab" data-tab="month" onclick="switchTab('month',this)">Ce mois</button>
+      <button class="stats-tab" data-tab="prev" onclick="switchTab('prev',this)">Mois préc.</button>
+    </div>
+
+    <!-- VUE SEMAINE -->
+    <div id="tab-week">
+      <!-- Score ring -->
+      <div class="card" style="margin-top:12px">
+        <div class="card-label">Score de sommeil · 7 derniers jours</div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <div class="score-ring">
+            <svg width="110" height="110" viewBox="0 0 140 140">
+              <circle cx="70" cy="70" r="58" fill="none" stroke="#1e2d4d" stroke-width="12"/>
+              <circle cx="70" cy="70" r="58" fill="none" stroke="url(#g1)" stroke-width="12" stroke-dasharray="364.4" id="weekScoreArc" stroke-dashoffset="72.9" stroke-linecap="round"/>
+              <defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#4f8ef7"/><stop offset="100%" stop-color="#7b5ea7"/></linearGradient></defs>
+            </svg>
+            <div class="score-text"><div class="score-num" id="weekScoreNum">—</div><div class="score-lbl">/ 100</div></div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+            <div><div style="font-size:12px;color:var(--muted)">Moy. / nuit</div><div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--accent)" id="weekAvgDur">—</div></div>
+            <div><div style="font-size:12px;color:var(--muted)">FC moyenne</div><div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--success)" id="weekAvgHR">—</div></div>
+            <div><div style="font-size:12px;color:var(--muted)">Déficit</div><div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--warning)" id="weekDeficit">—</div></div>
+          </div>
+        </div>
+      </div>
+      <!-- Barres 7 jours -->
+      <div class="section-title">Durée · 7 derniers jours</div>
+      <div class="week-chart" id="weekBars"></div>
+      <!-- Historique liste -->
+      <div class="section-title">Détail</div>
+      <div class="card" style="padding:16px 20px"><div id="weekList"></div></div>
+    </div>
+
+    <!-- VUE CE MOIS -->
+    <div id="tab-month" style="display:none">
+      <div class="card" style="margin-top:12px">
+        <div class="card-label">Résumé · <span id="monthName">—</span></div>
+        <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
+          <div style="flex:1;min-width:80px"><div style="font-size:11px;color:var(--muted)">Moy. sommeil</div><div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--accent)" id="monthAvgDur">—</div></div>
+          <div style="flex:1;min-width:80px"><div style="font-size:11px;color:var(--muted)">FC moy.</div><div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--success)" id="monthAvgHR">—</div></div>
+          <div style="flex:1;min-width:80px"><div style="font-size:11px;color:var(--muted)">Score moy.</div><div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--accent2)" id="monthAvgScore">—</div></div>
+          <div style="flex:1;min-width:80px"><div style="font-size:11px;color:var(--muted)">Nuits enregistrées</div><div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--text)" id="monthNights">0</div></div>
+        </div>
+      </div>
+      <!-- Courbe du mois -->
+      <div class="section-title">Courbe · 30 jours</div>
+      <div class="card" style="padding:16px;overflow:hidden">
+        <canvas id="monthCurve" height="100" style="width:100%"></canvas>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;padding:0 4px">
+          <span style="font-size:10px;color:var(--muted)" id="monthCurveStart">—</span>
+          <span style="font-size:10px;color:var(--muted)" id="monthCurveMid">—</span>
+          <span style="font-size:10px;color:var(--muted)" id="monthCurveEnd">—</span>
+        </div>
+      </div>
+      <!-- Humeur du mois -->
+      <div class="section-title">Humeur au réveil</div>
+      <div class="card" style="padding:16px 20px">
+        <div id="monthMoodBars"></div>
+      </div>
+    </div>
+
+    <!-- VUE MOIS PRÉCÉDENT -->
+    <div id="tab-prev" style="display:none">
+      <div class="card" style="margin-top:12px">
+        <div class="card-label">Résumé · <span id="prevMonthName">—</span></div>
+        <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
+          <div style="flex:1;min-width:80px"><div style="font-size:11px;color:var(--muted)">Moy. sommeil</div><div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--accent)" id="prevAvgDur">—</div></div>
+          <div style="flex:1;min-width:80px"><div style="font-size:11px;color:var(--muted)">FC moy.</div><div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--success)" id="prevAvgHR">—</div></div>
+          <div style="flex:1;min-width:80px"><div style="font-size:11px;color:var(--muted)">Score moy.</div><div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--accent2)" id="prevAvgScore">—</div></div>
+          <div style="flex:1;min-width:80px"><div style="font-size:11px;color:var(--muted)">Nuits enregistrées</div><div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--text)" id="prevNights">0</div></div>
+        </div>
+      </div>
+      <!-- Comparaison avec ce mois -->
+      <div class="section-title">Comparaison avec ce mois</div>
+      <div class="card" style="padding:16px 20px"><div id="compareList"></div></div>
+      <!-- Barres mois précédent -->
+      <div class="section-title">Durée · mois précédent</div>
+      <div class="card" style="padding:16px;overflow:hidden">
+        <canvas id="prevCurve" height="100" style="width:100%"></canvas>
+      </div>
+    </div>
+
+    <!-- Message si pas encore de données -->
+    <div id="noDataMsg" style="display:none;text-align:center;padding:40px 24px;color:var(--muted)">
+      <div style="font-size:40px;margin-bottom:12px">😴</div>
+      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px">Pas encore de données</div>
+      <div style="font-size:13px;line-height:1.5">Enregistre ta première nuit via la fiche de réveil<br>et tes stats apparaîtront ici !</div>
+    </div>
+  </div>
+
+  <!-- PARAMÈTRES -->
+  <div class="screen" id="screen-settings">
+    <div class="top-bar"><div><div class="greeting">Compte</div><div class="title">Paramètres</div></div></div>
+    <div class="settings-list">
+      <div class="settings-item" onclick="openVolModal()">
+        <div class="s-left"><div class="s-icon" style="background:#0e1f0e">🔊</div><div><div class="s-title">Volume max alarme</div><div class="s-sub" id="volSub">80% — montée progressive</div></div></div>
+        <div class="chevron">›</div>
+      </div>
+      <div class="settings-item">
+        <div class="s-left"><div class="s-icon" style="background:#0e1f0e">🎵</div><div><div class="s-title">Bibliothèque musicale</div><div class="s-sub" id="libCount">0 morceau importé</div></div></div>
+        <div class="chevron">›</div>
+      </div>
+      <!-- Capteurs de suivi -->
+      <div class="settings-item" style="flex-direction:column;align-items:flex-start;gap:14px" onclick="void(0)">
+        <div class="s-left">
+          <div class="s-icon" style="background:#0e1a2a">📡</div>
+          <div><div class="s-title">Capteurs de suivi</div><div class="s-sub" id="sensorModeSub">Micro + Accéléromètre</div></div>
+        </div>
+        <div style="display:flex;gap:8px;width:100%">
+          <button class="sensor-mode-btn sel" data-mode="both" onclick="setSensorMode('both')">🎙️+📱 Les deux</button>
+          <button class="sensor-mode-btn" data-mode="mic" onclick="setSensorMode('mic')">🎙️ Micro</button>
+          <button class="sensor-mode-btn" data-mode="motion" onclick="setSensorMode('motion')">📱 Accéléro</button>
+        </div>
+      </div>
+      <div class="settings-item">
+        <div class="s-left"><div class="s-icon" style="background:#1a1200">🔔</div><div><div class="s-title">Notifications</div><div class="s-sub">Rappel coucher activé</div></div></div>
+        <div class="chevron">›</div>
+      </div>
+      <div class="settings-item" onclick="goTo('profile', null)">
+        <div class="s-left"><div class="s-icon" style="background:#1f0e1a">👤</div><div><div class="s-title">Mon profil</div><div class="s-sub" id="profileSettingSub">Configurer prénom, âge, objectif</div></div></div>
+        <div class="chevron">›</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUIVI DE NUIT -->
+  <div class="screen" id="screen-sleep">
+    <div class="top-bar">
+      <div><div class="greeting">Try to Sleep</div><div class="title" id="sleepScreenTitle">Suivi de nuit</div></div>
+    </div>
+
+    <!-- Bedtime notification banner -->
+    <div class="bedtime-banner hidden" id="bedtimeBanner">
+      <div class="bedtime-icon">🌙</div>
+      <div style="flex:1">
+        <div class="bedtime-text">
+          <div class="bt-title">C'est l'heure d'aller dormir !</div>
+          <div class="bt-sub">Le suivi démarre dans <span class="bedtime-countdown" id="bannerCountdown">20:00</span></div>
+        </div>
+        <div class="bedtime-actions">
+          <button class="bt-btn primary" onclick="startTrackingNow()">Démarrer maintenant</button>
+          <button class="bt-btn ghost" onclick="dismissBedtime()">Ignorer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div class="sleep-hero">
+      <div class="moon-wrap"><div class="moon" id="sleepMoon">🌙</div></div>
+      <div class="sleep-status" id="sleepStatus">Prêt à suivre</div>
+      <div class="sleep-sub" id="sleepSub">Le suivi s'active automatiquement<br>20min avant ton heure de coucher</div>
+      <button class="start-sleep-btn" id="startBtn" onclick="toggleTracking()">
+        Démarrer le suivi manuellement
+      </button>
+    </div>
+
+    <!-- Capteurs live -->
+    <div class="sensors-row" id="sensorsRow">
+      <div class="sensor-card" id="micCard">
+        <div class="sensor-icon">🎙️</div>
+        <div class="sensor-label">MICRO</div>
+        <div class="sensor-val" id="micVal">En attente</div>
+      </div>
+      <div class="sensor-card" id="motionCard">
+        <div class="sensor-icon">📱</div>
+        <div class="sensor-label">MOUVEMENT</div>
+        <div class="sensor-val" id="motionVal">En attente</div>
+      </div>
+      <div class="sensor-card" id="phaseCard">
+        <div class="sensor-icon">💤</div>
+        <div class="sensor-label">PHASE</div>
+        <div class="sensor-val" id="phaseVal">—</div>
+      </div>
+    </div>
+
+    <!-- Waveform micro live -->
+    <div class="waveform" id="waveform">
+      <div class="wave-bar" style="height:8px"></div>
+      <div class="wave-bar" style="height:12px"></div>
+      <div class="wave-bar" style="height:6px"></div>
+      <div class="wave-bar" style="height:16px"></div>
+      <div class="wave-bar" style="height:8px"></div>
+      <div class="wave-bar" style="height:20px"></div>
+      <div class="wave-bar" style="height:10px"></div>
+      <div class="wave-bar" style="height:14px"></div>
+      <div class="wave-bar" style="height:6px"></div>
+      <div class="wave-bar" style="height:18px"></div>
+      <div class="wave-bar" style="height:8px"></div>
+      <div class="wave-bar" style="height:12px"></div>
+    </div>
+
+    <!-- Timeline de nuit -->
+    <div class="timeline" id="sleepTimeline" style="display:none">
+      <div class="card-label">Durée de suivi</div>
+      <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;margin-top:4px" id="trackDuration">0h 00</div>
+      <div class="timeline-bar">
+        <div class="timeline-fill" id="timelineFill" style="width:0%"></div>
+      </div>
+      <div class="timeline-markers">
+        <span class="timeline-marker" id="tlStart">--:--</span>
+        <span class="timeline-marker" style="color:var(--muted)">Objectif 8h</span>
+        <span class="timeline-marker" id="tlAlarm">Réveil</span>
+      </div>
+    </div>
+
+    <!-- Clips de la nuit -->
+    <div id="clipsSection" style="display:none">
+      <div class="section-title">Moments agités · <span id="clipCount">0</span> clip(s)</div>
+      <div id="clipsList"></div>
+    </div>
+
+    <!-- Résumé matin (affiché après suivi) -->
+    <div id="morningReport" style="display:none">
+      <div class="section-title">Rapport de nuit</div>
+      <div class="stats-grid" style="margin-bottom:12px">
+        <div class="stat-tile"><div class="val ag" id="repDuration">—</div><div class="lbl">Durée totale</div></div>
+        <div class="stat-tile"><div class="val ab" id="repClips">0</div><div class="lbl">Moments agités</div></div>
+        <div class="stat-tile"><div class="val ap" id="repPhase">—</div><div class="lbl">Phase dominante</div></div>
+        <div class="stat-tile"><div class="val aw" id="repNoise">—</div><div class="lbl">Niveau sonore moy.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFIL -->
+  <div class="screen" id="screen-profile">
+    <div class="top-bar">
+      <div><div class="greeting">Mon compte</div><div class="title">Profil</div></div>
+    </div>
+    <!-- Avatar -->
+    <div style="display:flex;flex-direction:column;align-items:center;padding:8px 24px 24px">
+      <div id="profileAvatar" style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:30px;margin-bottom:12px;cursor:pointer;position:relative;overflow:hidden">
+        <span id="profileInitial">T</span>
+        <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="onPhoto(this)">
+      </div>
+      <div style="font-size:12px;color:var(--muted);cursor:pointer" onclick="document.getElementById('photoInput').click()">Changer la photo</div>
+    </div>
+
+    <div style="padding:0 16px">
+      <!-- Nom -->
+      <label class="field-label" style="margin-top:4px">Prénom</label>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 18px;margin-bottom:12px">
+        <input id="profileName" type="text" placeholder="Ton prénom" value=""
+          style="background:transparent;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;width:100%;outline:none"
+          oninput="updateProfileDisplay(); markProfileDirty()">
+      </div>
+
+      <!-- Âge -->
+      <label class="field-label">Âge</label>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 18px;margin-bottom:12px">
+        <input id="profileAge" type="number" placeholder="Ton âge" min="5" max="120"
+          style="background:transparent;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;width:100%;outline:none;-moz-appearance:textfield"
+          oninput="updateSleepReco(); markProfileDirty()">
+      </div>
+
+      <!-- Objectif sommeil -->
+      <label class="field-label">Objectif de sommeil</label>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 18px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:15px" id="sleepGoalLabel">8h 00</span>
+        <input type="range" style="width:55%;accent-color:var(--accent)" min="4" max="12" step="0.5" value="8" id="sleepGoalSlider"
+          oninput="updateSleepGoal(this.value)">
+      </div>
+      <div style="font-size:12px;color:var(--muted);padding:0 4px;margin-bottom:20px" id="sleepRecoText">
+        💡 Recommandation pour ton âge : 8–10h
+      </div>
+
+      <!-- Heure de coucher calculée -->
+      <div style="background:linear-gradient(135deg,#0e1e3f,#1a1535);border:1px solid #2a3a5e;border-radius:16px;padding:18px 20px;margin-bottom:12px">
+        <div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Heure de coucher conseillée</div>
+        <div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:var(--accent)" id="bedtimeCalc">22:30</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px" id="bedtimeCalcSub">Pour un réveil à --:-- avec 8h de sommeil</div>
+      </div>
+
+      <button class="save-btn saved" id="saveProfileBtn" onclick="saveProfile()">✓ Profil enregistré</button>
+    </div>
+  </div>
+
+  <!-- NAV -->
+  <nav>
+    <button class="nav-item active" onclick="goTo('home',this)" data-nav="home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
+      <div class="nav-dot"></div>Accueil
+    </button>
+    <button class="nav-item" onclick="goTo('sleep',this)" data-nav="sleep">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+      <div class="nav-dot"></div>Suivi
+    </button>
+    <button class="nav-item" onclick="goTo('alarm',this)" data-nav="alarm">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M5 3L2 6M22 6l-3-3M12 9v4l2.5 2.5"/><path d="M6 19l-1 2M18 19l1 2"/></svg>
+      <div class="nav-dot"></div>Alarme
+    </button>
+    <button class="nav-item" onclick="goTo('stats',this)" data-nav="stats">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 4-4"/></svg>
+      <div class="nav-dot"></div>Stats
+    </button>
+    <button class="nav-item" onclick="goTo('settings',this)" data-nav="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <div class="nav-dot"></div>Réglages
+    </button>
+  </nav>
+</div>
+
+<!-- MODAL CRÉER ALARME -->
+<div class="modal-overlay" id="addModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Nouvelle alarme</div>
+
+    <label class="field-label">Heure</label>
+    <div class="time-row">
+      <input type="number" id="iH" min="0" max="23" value="07">
+      <span class="time-sep">:</span>
+      <input type="number" id="iM" min="0" max="59" value="00">
+    </div>
+
+    <label class="field-label">Jours</label>
+    <div class="days-row">
+      <div class="day-btn sel" data-d="1">L</div><div class="day-btn sel" data-d="2">M</div>
+      <div class="day-btn sel" data-d="3">M</div><div class="day-btn sel" data-d="4">J</div>
+      <div class="day-btn sel" data-d="5">V</div><div class="day-btn" data-d="6">S</div>
+      <div class="day-btn" data-d="0">D</div>
+    </div>
+
+    <label class="field-label">Rappel (snooze)</label>
+    <div class="row-setting">
+      <span style="font-size:14px">⏰ Durée du rappel</span>
+      <select id="snoozeVal">
+        <option value="5">5 min</option>
+        <option value="10" selected>10 min</option>
+        <option value="15">15 min</option>
+        <option value="20">20 min</option>
+        <option value="30">30 min</option>
+      </select>
+    </div>
+
+    <label class="field-label">Musique</label>
+    <div class="music-row" onclick="document.getElementById('fileInput').click()">
+      <div>
+        <div class="music-ph" id="mph">Choisir un fichier audio</div>
+        <div class="music-chosen" id="mch" style="display:none"></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">MP3, AAC, WAV, M4A</div>
+      </div>
+      <span style="color:var(--muted);font-size:22px">+</span>
+    </div>
+    <input type="file" id="fileInput" accept="audio/*" onchange="onFile(this)">
+
+    <div class="vol-row">
+      <label class="field-label">Volume max — <span id="vLbl">80</span>%</label>
+      <input type="range" class="vol-slider" id="vSlider" min="10" max="100" value="80"
+        oninput="document.getElementById('vLbl').textContent=this.value">
+    </div>
+
+    <button class="save-btn" onclick="saveAlarm()">Enregistrer l'alarme</button>
+  </div>
+</div>
+
+<!-- MODAL VOLUME (settings) -->
+<div class="vol-modal" id="volModal" onclick="if(event.target===this)closeVolModal()">
+  <div class="vol-modal-inner">
+    <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:20px">🔊 Volume maximum</div>
+    <div class="vol-modal-val" id="vmVal">80%</div>
+    <input type="range" class="vol-slider" id="vmSlider" min="10" max="100" value="80"
+      oninput="document.getElementById('vmVal').textContent=this.value+'%'">
+    <button class="vol-modal-btn" onclick="saveVol()">Appliquer</button>
+  </div>
+</div>
+
+<!-- MORNING CHECKIN -->
+<div class="checkin-overlay" id="checkinOverlay" onclick="if(event.target===this)closeMorningCheckin()">
+  <div class="checkin-sheet">
+    <div class="checkin-handle"></div>
+    <div class="checkin-title">Bonjour ☀️</div>
+    <div class="checkin-sub" id="checkinSub">Comment s'est passée ta nuit ?</div>
+
+    <!-- Humeur -->
+    <div class="mood-row">
+      <div class="mood-btn" data-mood="exhausted" onclick="selectMood(this)">😵<span>Épuisé</span></div>
+      <div class="mood-btn" data-mood="tired" onclick="selectMood(this)">😴<span>Fatigué</span></div>
+      <div class="mood-btn" data-mood="ok" onclick="selectMood(this)">😐<span>Moyen</span></div>
+      <div class="mood-btn" data-mood="good" onclick="selectMood(this)">😊<span>Bien</span></div>
+      <div class="mood-btn" data-mood="great" onclick="selectMood(this)">🤩<span>Super</span></div>
+    </div>
+
+    <!-- FC + SpO₂ -->
+    <div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Données physiologiques <span style="font-weight:400;text-transform:none;letter-spacing:0">(optionnel)</span></div>
+    <div class="bio-row">
+      <div class="bio-field">
+        <label>❤️ FC moy.</label>
+        <input type="number" id="checkinHR" placeholder="62" min="30" max="200">
+        <div class="bio-unit">bpm</div>
+      </div>
+      <div class="bio-field">
+        <label>🩸 SpO₂</label>
+        <input type="number" id="checkinSpo2" placeholder="96" min="80" max="100">
+        <div class="bio-unit">%</div>
+      </div>
+      <div class="bio-field">
+        <label>⏱️ Durée</label>
+        <input type="text" id="checkinDur" placeholder="7h30" readonly style="cursor:default">
+        <div class="bio-unit">auto</div>
+      </div>
+    </div>
+
+    <!-- Note libre -->
+    <div class="note-field">
+      <textarea id="checkinNote" placeholder="Une note sur ta nuit ? (rêves, réveils, douleurs…)"></textarea>
+    </div>
+
+    <div class="checkin-actions">
+      <button class="checkin-save" onclick="saveMorningCheckin()">Enregistrer la nuit</button>
+      <button class="checkin-skip" onclick="closeMorningCheckin()">Passer</button>
+    </div>
+  </div>
+</div>
+
+<!-- RINGING OVERLAY -->
+<div id="ring-overlay">
+  <div class="ring-pulse"></div><div class="ring-pulse"></div><div class="ring-pulse"></div>
+  <div class="ring-time" id="rTime">06:30</div>
+  <div class="ring-sub" id="rSub">Réveil</div>
+  <div class="ring-music" id="rMusic" style="display:none">
+    <span class="ring-note">🎵</span><span id="rMusicName"></span>
+  </div>
+  <div class="swipe-track" id="swipeTrack">
+    <div class="swipe-lbl">Glisser pour arrêter &nbsp;→</div>
+    <div class="swipe-thumb" id="swipeThumb">→</div>
+  </div>
+  <button class="snooze-btn" onclick="doSnooze()">Rappel dans <span id="snoozeLbl">10</span> min</button>
+</div>
+
+<script>
+// ── STATE ──
+let alarms = [];
+let globalMax = 80; // percent
+let pendingURL = null, pendingName = null;
+let musicLib = [];
+let ringingAlarm = null;
+let snoozeTimer = null, autoSnoozeTimer = null;
+let audioCtx = null, audioSrc = null, audioGain = null;
+
+// ── NAV ──
+function goTo(id, btn) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (id === 'sleep')   updateBedtimeCalc();
+  if (id === 'profile') updateBedtimeCalc();
+  if (id === 'stats')   initStatsIfNeeded();
+}
+
+// ── STATS ENGINE ─────────────────────────────────────────────────────────────
+
+// nightLog est partagé avec le checkin — chaque entrée : { date, time, mood, hr, spo2, dur, note }
+// dur format "7h30" ou "7h 30" — on parse en minutes
+
+function parseDur(s) {
+  if (!s) return null;
+  const m = s.match(/(\d+)h\s*(\d*)/);
+  if (!m) return null;
+  return parseInt(m[1]) * 60 + (parseInt(m[2]) || 0);
+}
+
+function durStr(mins) {
+  if (!mins) return '—';
+  return Math.floor(mins/60) + 'h ' + pad(mins % 60);
+}
+
+function scoreFromEntry(e) {
+  // Score 0–100 basé sur durée vs objectif + humeur
+  const goal = (profile.sleepGoal || 8) * 60;
+  const dur  = parseDur(e.dur);
+  let s = 50;
+  if (dur) s = Math.min(100, Math.round((dur / goal) * 70));
+  const moodBonus = { exhausted:-15, tired:-8, ok:0, good:8, great:15 };
+  s += (moodBonus[e.mood] || 0);
+  return Math.max(0, Math.min(100, s));
+}
+
+function avg(arr) { return arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : null; }
+
+function getEntriesForPeriod(startDate, endDate) {
+  return nightLog.filter(e => {
+    const d = parseDate(e.date);
+    return d >= startDate && d <= endDate;
+  });
+}
+
+function parseDate(str) {
+  // format dd/mm/yyyy
+  const p = str.split('/');
+  return new Date(+p[2], +p[1]-1, +p[0]);
+}
+
+function switchTab(tab, btn) {
+  document.querySelectorAll('.stats-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-week').style.display  = tab === 'week'  ? 'block' : 'none';
+  document.getElementById('tab-month').style.display = tab === 'month' ? 'block' : 'none';
+  document.getElementById('tab-prev').style.display  = tab === 'prev'  ? 'block' : 'none';
+  if (tab === 'week')  renderWeekStats();
+  if (tab === 'month') renderMonthStats();
+  if (tab === 'prev')  renderPrevStats();
+}
+
+// ── WEEK ──
+function renderWeekStats() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate()-i);
+    days.push(d);
+  }
+  const dayNames = ['D','L','M','M','J','V','S'];
+  const entries  = days.map(d => {
+    const str = d.toLocaleDateString('fr-FR');
+    return nightLog.find(e => e.date === str) || null;
+  });
+
+  const hasSomeData = entries.some(e => e !== null);
+  document.getElementById('noDataMsg').style.display = hasSomeData ? 'none' : 'block';
+
+  // Score ring
+  const scores  = entries.filter(e=>e).map(scoreFromEntry);
+  const avgScore = avg(scores);
+  document.getElementById('weekScoreNum').textContent = avgScore ?? '—';
+  const arc = document.getElementById('weekScoreArc');
+  if (avgScore !== null) {
+    const pct = avgScore / 100;
+    arc.setAttribute('stroke-dashoffset', 364.4 * (1 - pct));
+  }
+
+  // Moyennes
+  const durs = entries.filter(e=>e).map(e=>parseDur(e.dur)).filter(Boolean);
+  const hrs  = entries.filter(e=>e).map(e=>+e.hr).filter(Boolean);
+  document.getElementById('weekAvgDur').textContent = durs.length ? durStr(avg(durs)) : '—';
+  document.getElementById('weekAvgHR').textContent  = hrs.length  ? avg(hrs)+' bpm'   : '—';
+  const goal = (profile.sleepGoal||8)*60;
+  const deficit = durs.length ? avg(durs) - goal : null;
+  document.getElementById('weekDeficit').textContent = deficit !== null
+    ? (deficit >= 0 ? '+' : '') + durStr(Math.abs(deficit)) : '—';
+
+  // Barres
+  const maxDur = Math.max(...durs, goal, 1);
+  const barsEl = document.getElementById('weekBars');
+  barsEl.innerHTML = '';
+  days.forEach((d, i) => {
+    const e   = entries[i];
+    const dur = e ? parseDur(e.dur) : null;
+    const pct = dur ? Math.min(96, Math.round((dur/maxDur)*96)) : 4;
+    const isToday = i === 6;
+    const cls = !dur ? '' : dur >= goal ? 'good' : dur >= goal*0.85 ? 'ok' : 'bad';
+    const wrap = document.createElement('div');
+    wrap.className = 'bar-wrap';
+    wrap.innerHTML = `
+      <div class="bar ${cls}${isToday?' today':''}" style="height:${pct}%" title="${dur?durStr(dur):'—'}"></div>
+      <div class="bar-day" style="color:${isToday?'var(--accent)':'var(--muted)'}">${dayNames[d.getDay()]}</div>`;
+    barsEl.appendChild(wrap);
+  });
+
+  // Liste détail
+  const listEl = document.getElementById('weekList');
+  if (!hasSomeData) { listEl.innerHTML = ''; return; }
+  listEl.innerHTML = '';
+  [...days].reverse().forEach((d, i) => {
+    const e = [...entries].reverse()[i];
+    const dayLabel = d.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'short' });
+    const row = document.createElement('div');
+    row.style.cssText = `display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)`;
+    row.innerHTML = `
+      <span style="font-size:13px;color:${e?'var(--text)':'var(--muted)'}">${dayLabel}</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        ${e ? `<span style="font-size:11px">${moodEmoji(e.mood)||'—'}</span>` : ''}
+        <span style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:${e?'var(--accent)':'var(--muted)'}">${e?durStr(parseDur(e.dur)):'—'}</span>
+      </div>`;
+    if (i === days.length-1) row.style.borderBottom = 'none';
+    listEl.appendChild(row);
+  });
+}
+
+// ── MONTH ──
+function renderMonthStats() {
+  const now   = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const end   = new Date(now.getFullYear(), now.getMonth()+1, 0);
+  const entries = getEntriesForPeriod(start, end);
+  const mName = now.toLocaleDateString('fr-FR', { month:'long', year:'numeric' });
+  document.getElementById('monthName').textContent = mName;
+  document.getElementById('monthNights').textContent = entries.length;
+
+  const durs   = entries.map(e=>parseDur(e.dur)).filter(Boolean);
+  const hrs    = entries.map(e=>+e.hr).filter(Boolean);
+  const scores = entries.map(scoreFromEntry);
+  document.getElementById('monthAvgDur').textContent   = durs.length   ? durStr(avg(durs))    : '—';
+  document.getElementById('monthAvgHR').textContent    = hrs.length    ? avg(hrs)+' bpm'      : '—';
+  document.getElementById('monthAvgScore').textContent = scores.length ? avg(scores)+'/100'   : '—';
+
+  // Courbe canvas
+  drawCurve('monthCurve', start, end, entries, 'monthCurveStart', 'monthCurveMid', 'monthCurveEnd');
+
+  // Mood bars
+  const moods = { exhausted:0, tired:0, ok:0, good:0, great:0 };
+  entries.forEach(e => { if (e.mood) moods[e.mood]++; });
+  const total = entries.length || 1;
+  const moodEl = document.getElementById('monthMoodBars');
+  moodEl.innerHTML = '';
+  [['great','🤩 Super',moods.great],['good','😊 Bien',moods.good],['ok','😐 Moyen',moods.ok],
+   ['tired','😴 Fatigué',moods.tired],['exhausted','😵 Épuisé',moods.exhausted]].forEach(([k,label,cnt]) => {
+    const pct = Math.round((cnt/total)*100);
+    moodEl.innerHTML += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <span style="font-size:12px;width:90px;color:var(--muted)">${label}</span>
+      <div style="flex:1;background:var(--border);border-radius:4px;height:6px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:4px"></div>
+      </div>
+      <span style="font-size:12px;font-weight:600;width:28px;text-align:right">${cnt}</span>
+    </div>`;
+  });
+}
+
+// ── PREV MONTH ──
+function renderPrevStats() {
+  const now   = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const end   = new Date(now.getFullYear(), now.getMonth(), 0);
+  const entriesPrev = getEntriesForPeriod(start, end);
+  const entriesCur  = getEntriesForPeriod(new Date(now.getFullYear(), now.getMonth(), 1), now);
+  const mName = start.toLocaleDateString('fr-FR', { month:'long', year:'numeric' });
+  document.getElementById('prevMonthName').textContent = mName;
+  document.getElementById('prevNights').textContent = entriesPrev.length;
+
+  const dursPrev  = entriesPrev.map(e=>parseDur(e.dur)).filter(Boolean);
+  const hrsPrev   = entriesPrev.map(e=>+e.hr).filter(Boolean);
+  const scorePrev = entriesPrev.map(scoreFromEntry);
+  document.getElementById('prevAvgDur').textContent   = dursPrev.length  ? durStr(avg(dursPrev))  : '—';
+  document.getElementById('prevAvgHR').textContent    = hrsPrev.length   ? avg(hrsPrev)+' bpm'    : '—';
+  document.getElementById('prevAvgScore').textContent = scorePrev.length ? avg(scorePrev)+'/100'  : '—';
+
+  // Courbe
+  drawCurve('prevCurve', start, end, entriesPrev);
+
+  // Comparaison
+  const dursCur  = entriesCur.map(e=>parseDur(e.dur)).filter(Boolean);
+  const scoreCur = entriesCur.map(scoreFromEntry);
+  const comparisons = [
+    { label:'Durée moy.', prev: avg(dursPrev) ? durStr(avg(dursPrev)) : '—', cur: avg(dursCur) ? durStr(avg(dursCur)) : '—',
+      delta: avg(dursPrev) && avg(dursCur) ? avg(dursCur) - avg(dursPrev) : null, unit:'min' },
+    { label:'Score moy.', prev: avg(scorePrev) ?? '—', cur: avg(scoreCur) ?? '—',
+      delta: avg(scorePrev) && avg(scoreCur) ? avg(scoreCur) - avg(scorePrev) : null, unit:'pts' },
+    { label:'FC moy.', prev: avg(hrsPrev) ? avg(hrsPrev)+' bpm' : '—',
+      cur: avg(entriesCur.map(e=>+e.hr).filter(Boolean)) ? avg(entriesCur.map(e=>+e.hr).filter(Boolean))+' bpm' : '—',
+      delta: null },
+  ];
+  const cmpEl = document.getElementById('compareList');
+  cmpEl.innerHTML = '';
+  comparisons.forEach((c,i) => {
+    const arrow = c.delta === null ? '' : c.delta > 0 ? '↑' : c.delta < 0 ? '↓' : '=';
+    const col   = c.delta === null ? 'var(--muted)' : c.delta > 0 ? 'var(--success)' : c.delta < 0 ? 'var(--warning)' : 'var(--muted)';
+    cmpEl.innerHTML += `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;${i<comparisons.length-1?'border-bottom:1px solid var(--border)':''}">
+      <span style="font-size:13px;color:var(--muted)">${c.label}</span>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:13px;color:var(--muted)">${c.prev}</span>
+        <span style="font-size:18px;color:var(--border)">→</span>
+        <span style="font-size:13px;font-weight:700;color:var(--text)">${c.cur}</span>
+        ${arrow ? `<span style="font-size:13px;font-weight:700;color:${col}">${arrow}</span>` : ''}
+      </div>
+    </div>`;
+  });
+}
+
+// ── CANVAS CURVE ──
+function drawCurve(canvasId, start, end, entries, startLblId, midLblId, endLblId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * window.devicePixelRatio || 300;
+  canvas.height = 100 * window.devicePixelRatio || 100;
+  ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+  const W = canvas.offsetWidth || 300, H = 100;
+  ctx.clearRect(0, 0, W, H);
+
+  // Build daily data
+  const days = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) {
+    const str = new Date(d).toLocaleDateString('fr-FR');
+    const e   = entries.find(x => x.date === str);
+    days.push(e ? (parseDur(e.dur) || null) : null);
+  }
+
+  const goal = (profile.sleepGoal||8)*60;
+  const vals  = days.map(v => v ?? 0);
+  const maxV  = Math.max(...vals, goal, 1);
+  const points = vals.map((v,i) => ({ x: (i/(days.length-1||1))*W, y: H - (v/maxV)*(H-10) - 5 }));
+  const hasData = vals.some(v=>v>0);
+
+  // Goal line
+  ctx.beginPath();
+  ctx.strokeStyle = '#2a3a5e';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4,4]);
+  const goalY = H - (goal/maxV)*(H-10) - 5;
+  ctx.moveTo(0, goalY); ctx.lineTo(W, goalY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  if (!hasData) {
+    ctx.fillStyle = '#6b7a99';
+    ctx.font = '12px DM Sans';
+    ctx.textAlign = 'center';
+    ctx.fillText('Aucune donnée pour cette période', W/2, H/2);
+    return;
+  }
+
+  // Fill gradient
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, H);
+  points.forEach(p => ctx.lineTo(p.x, vals[points.indexOf(p)]>0 ? p.y : H));
+  ctx.lineTo(points[points.length-1].x, H);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0, '#4f8ef730'); grad.addColorStop(1, '#4f8ef705');
+  ctx.fillStyle = grad; ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.strokeStyle = '#4f8ef7'; ctx.lineWidth = 2;
+  let first = true;
+  points.forEach((p, i) => {
+    if (vals[i] === 0) { first = true; return; }
+    if (first) { ctx.moveTo(p.x, p.y); first = false; }
+    else ctx.lineTo(p.x, p.y);
+  });
+  ctx.stroke();
+
+  // Labels
+  if (startLblId) {
+    document.getElementById(startLblId).textContent = start.toLocaleDateString('fr-FR', {day:'numeric',month:'short'});
+    const mid = new Date(start); mid.setDate(mid.getDate() + Math.floor(days.length/2));
+    document.getElementById(midLblId).textContent  = mid.toLocaleDateString('fr-FR', {day:'numeric',month:'short'});
+    document.getElementById(endLblId).textContent  = end.toLocaleDateString('fr-FR', {day:'numeric',month:'short'});
+  }
+}
+
+// Init stats quand on arrive sur l'écran
+function initStatsIfNeeded() {
+  renderWeekStats();
+}
+
+
+
+// ── CLOCK CHECK ──
+function tick() {
+  const now = new Date();
+  if (now.getSeconds() > 15) return;
+  const d = now.getDay(), h = now.getHours(), m = now.getMinutes();
+  for (const a of alarms) {
+    if (a.enabled && a.h === h && a.m === m && a.days.includes(d)) {
+      ring(a); break;
+    }
+  }
+  updateHero();
+}
+setInterval(tick, 10000);
+updateHero();
+
+// ── RING ──
+function ring(alarm) {
+  ringingAlarm = alarm;
+  clearTimeout(autoSnoozeTimer);
+  const now = new Date();
+  document.getElementById('rTime').textContent = pad(now.getHours())+':'+pad(now.getMinutes());
+  document.getElementById('rSub').textContent  = alarm.audioName || 'Alarme';
+  document.getElementById('snoozeLbl').textContent = alarm.snooze;
+  const rm = document.getElementById('rMusic');
+  if (alarm.audioURL) {
+    document.getElementById('rMusicName').textContent = alarm.audioName;
+    rm.style.display = 'flex';
+  } else rm.style.display = 'none';
+  document.getElementById('ring-overlay').classList.add('show');
+  startAudio(alarm);
+  setupSwipe();
+  // Auto-snooze after 15s if no interaction
+  autoSnoozeTimer = setTimeout(doSnooze, 15000);
+}
+
+async function startAudio(alarm) {
+  stopAudio();
+  if (!alarm.audioURL) {
+    playFallbackBeep();
+    return;
+  }
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Convertir DataURL en ArrayBuffer directement — pas de fetch
+    const base64 = alarm.audioURL.split(',')[1];
+    const binary  = atob(base64);
+    const bytes   = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const buf = await audioCtx.decodeAudioData(bytes.buffer);
+    audioSrc  = audioCtx.createBufferSource();
+    audioSrc.buffer = buf; audioSrc.loop = true;
+    audioGain = audioCtx.createGain();
+    audioGain.gain.setValueAtTime(0.01, audioCtx.currentTime);
+    audioSrc.connect(audioGain); audioGain.connect(audioCtx.destination);
+    audioSrc.start();
+    const target = (alarm.maxVol ?? globalMax) / 100;
+    audioGain.gain.linearRampToValueAtTime(target, audioCtx.currentTime + 30);
+  } catch(e) { console.warn('audio error', e); playFallbackBeep(); }
+}
+
+function stopAudio() {
+  if (audioSrc)  { try { audioSrc.stop(); } catch(e){} audioSrc = null; }
+  if (audioCtx)  { audioCtx.close(); audioCtx = null; audioGain = null; }
+}
+
+// ── SWIPE TO DISMISS ──
+function setupSwipe() {
+  const thumb = document.getElementById('swipeThumb');
+  const track = document.getElementById('swipeTrack');
+  let startX = 0, dragging = false;
+  const maxX = track.offsetWidth - 64;
+
+  function start(e) { dragging = true; startX = e.touches ? e.touches[0].clientX : e.clientX; thumb.style.transition = 'none'; }
+  function move(e) {
+    if (!dragging) return;
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const x  = Math.min(Math.max(0, cx - startX), maxX);
+    thumb.style.left = (4 + x) + 'px';
+    const p = x / maxX;
+    track.style.background = `linear-gradient(to right,#4f8ef722 ${p*100}%,var(--card) ${p*100}%)`;
+    if (x >= maxX * 0.88) dismiss();
+  }
+  function end() { dragging = false; thumb.style.transition = 'left .3s'; thumb.style.left = '4px'; track.style.background = ''; }
+
+  thumb.ontouchstart = start; thumb.ontouchmove = move; thumb.ontouchend = end;
+  thumb.onmousedown  = start; window.onmousemove = move; window.onmouseup = end;
+}
+
+function dismiss() {
+  clearTimeout(autoSnoozeTimer);
+  document.getElementById('ring-overlay').classList.remove('show');
+  ringingAlarm = null;
+  // Ouvre la fiche de réveil après un court délai
+  setTimeout(openMorningCheckin, 600);
+}
+
+function doSnooze() {
+  clearTimeout(autoSnoozeTimer);
+  const s = ringingAlarm ? ringingAlarm.snooze : 10;
+  stopAudio();
+  document.getElementById('ring-overlay').classList.remove('show');
+  snoozeTimer = setTimeout(() => { if (ringingAlarm) ring(ringingAlarm); }, s * 60000);
+}
+
+// ── MODAL ──
+function openModal() {
+  pendingURL = pendingName = null;
+  document.getElementById('mph').style.display = 'block';
+  document.getElementById('mch').style.display = 'none';
+  document.getElementById('vSlider').value = globalMax;
+  document.getElementById('vLbl').textContent = globalMax;
+  document.querySelectorAll('.day-btn').forEach(b => {
+    const d = +b.dataset.d; b.classList.toggle('sel', d >= 1 && d <= 5);
+  });
+  document.getElementById('addModal').classList.add('open');
+}
+function closeModal() { document.getElementById('addModal').classList.remove('open'); }
+
+function onFile(input) {
+  const f = input.files[0]; if (!f) return;
+  pendingName = f.name.replace(/\.[^.]+$/, '');
+  // Lire le fichier en ArrayBuffer immédiatement — évite le "Failed to fetch" plus tard
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    pendingURL = e.target.result; // base64 DataURL, toujours accessible
+    if (!musicLib.find(m => m.name === pendingName)) {
+      musicLib.push({ name: pendingName, url: pendingURL });
+      const n = musicLib.length;
+      document.getElementById('libCount').textContent = n + ' morceau' + (n>1?'x':'') + ' importé' + (n>1?'s':'');
+    }
+  };
+  reader.readAsDataURL(f);
+  document.getElementById('mph').style.display = 'none';
+  const el = document.getElementById('mch');
+  el.textContent = '🎵 ' + pendingName; el.style.display = 'block';
+}
+
+function saveAlarm() {
+  const h = (+document.getElementById('iH').value) % 24;
+  const m = (+document.getElementById('iM').value) % 60;
+  const snooze = +document.getElementById('snoozeVal').value;
+  const maxVol = +document.getElementById('vSlider').value;
+  const days = [...document.querySelectorAll('.day-btn.sel')].map(b => +b.dataset.d);
+  if (!days.length) { alert('Choisis au moins un jour.'); return; }
+
+  // Disable all existing alarms (only one active at a time)
+  alarms.forEach(a => a.enabled = false);
+
+  alarms.push({ id: Date.now(), h, m, days, snooze, maxVol, audioURL: pendingURL, audioName: pendingName, enabled: true });
+  closeModal();
+  renderAlarms();
+  updateHero();
+}
+
+// ── RENDER ALARMS ──
+function renderAlarms() {
+  const list = document.getElementById('alarmList');
+  if (!alarms.length) {
+    list.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:24px 0">Aucune alarme programmée</div>';
+    return;
+  }
+  list.innerHTML = '';
+  alarms.forEach(a => {
+    const dn = ['D','L','M','M','J','V','S'];
+    const dayStr = a.days.length===7 ? 'Tous les jours'
+      : a.days.length===5 && !a.days.includes(0)&&!a.days.includes(6) ? 'Lun – Ven'
+      : a.days.map(d=>dn[d]).join(', ');
+    const div = document.createElement('div');
+    div.className = 'alarm-item' + (a.enabled ? ' active-alarm' : '');
+    div.innerHTML = `
+      <div style="flex:1;min-width:0">
+        <div class="alarm-time${a.enabled?'':' off'}">${pad(a.h)}:${pad(a.m)}</div>
+        <div class="alarm-info">${dayStr} · Snooze ${a.snooze}min</div>
+        <div class="alarm-music" style="color:${a.audioName?'var(--success)':'var(--muted)'}">
+          ${a.audioName ? '🎵 '+a.audioName : 'Aucune musique'}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+        <button class="toggle ${a.enabled?'on':'off'}" data-id="${a.id}"></button>
+        <span style="font-size:18px;cursor:pointer;color:var(--muted)" data-del="${a.id}">🗑</span>
+      </div>`;
+    list.appendChild(div);
+  });
+
+  list.querySelectorAll('.toggle').forEach(btn => btn.addEventListener('click', () => {
+    const a = alarms.find(x => x.id === +btn.dataset.id); if (!a) return;
+    const next = !a.enabled;
+    alarms.forEach(x => x.enabled = false);
+    a.enabled = next;
+    renderAlarms(); updateHero();
+  }));
+  list.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', () => {
+    alarms = alarms.filter(x => x.id !== +btn.dataset.del);
+    renderAlarms(); updateHero();
+  }));
+}
+
+// ── HERO COUNTDOWN ──
+function updateHero() {
+  const a = alarms.find(x => x.enabled);
+  if (!a) {
+    document.getElementById('nextTitle').textContent = 'Aucune alarme';
+    document.getElementById('nextTime').textContent  = '--:--';
+    document.getElementById('nextCD').textContent    = 'Active une alarme pour commencer';
+    document.getElementById('nextMusic').style.display = 'none';
+    return;
+  }
+  document.getElementById('nextTitle').textContent = 'Prochain réveil';
+  document.getElementById('nextTime').textContent  = pad(a.h)+':'+pad(a.m);
+  const now = new Date(), next = new Date();
+  next.setHours(a.h, a.m, 0, 0);
+  if (next <= now) next.setDate(next.getDate()+1);
+  const diff = next - now;
+  const dh = Math.floor(diff/3600000), dm = Math.floor((diff%3600000)/60000);
+  document.getElementById('nextCD').innerHTML = `Dans <strong style="color:var(--text)">${dh}h ${dm}min</strong>`;
+  if (a.audioName) {
+    document.getElementById('nextMusicName').textContent = a.audioName;
+    document.getElementById('nextMusic').style.display = 'inline-flex';
+  } else document.getElementById('nextMusic').style.display = 'none';
+  document.getElementById('volDisplay').textContent = `Max : ${a.maxVol ?? globalMax}%`;
+}
+
+// ── VOL MODAL ──
+function openVolModal() {
+  document.getElementById('vmSlider').value = globalMax;
+  document.getElementById('vmVal').textContent = globalMax + '%';
+  document.getElementById('volModal').classList.add('open');
+}
+function closeVolModal() { document.getElementById('volModal').classList.remove('open'); }
+function saveVol() {
+  globalMax = +document.getElementById('vmSlider').value;
+  document.getElementById('volSub').textContent = globalMax + '% — montée progressive';
+  document.getElementById('volDisplay').textContent = `Max : ${globalMax}%`;
+  closeVolModal();
+}
+
+// ── DAY BUTTONS ──
+document.querySelectorAll('.day-btn').forEach(b => b.addEventListener('click', () => b.classList.toggle('sel')));
+
+// ── UTILS ──
+function pad(n) { return String(n).padStart(2,'0'); }
+
+renderAlarms();
+
+// ── SLEEP TRACKING ──────────────────────────────────────────────────────────
+let isTracking = false;
+let trackingStart = null;
+let micStream = null, micCtx = null, micAnalyser = null;
+let motionActive = false;
+let lastMotion = { x:0, y:0, z:0 };
+let motionLevel = 0;
+let clips = [];
+let clipBuffer = [];
+let mediaRecorder = null;
+let trackDurationInterval = null;
+let waveInterval = null;
+let bedtimeTimer = null, bedtimeInterval = null;
+let sleepPhase = 'Léger';
+let phaseInterval = null;
+let currentNoiseLvl = 0;
+let noiseTriggered = false, motionTriggered = false;
+let clipCheckInterval = null;
+
+async function toggleTracking() {
+  if (isTracking) stopTracking();
+  else await startTracking();
+}
+
+async function startTrackingNow() {
+  dismissBedtime();
+  await startTracking();
+  goTo('sleep', document.querySelector('[data-nav=sleep]'));
+}
+
+async function startTracking() {
+  try {
+    if (sensorMode !== 'motion') {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micCtx    = new (window.AudioContext || window.webkitAudioContext)();
+      const src = micCtx.createMediaStreamSource(micStream);
+      micAnalyser = micCtx.createAnalyser();
+      micAnalyser.fftSize = 256;
+      src.connect(micAnalyser);
+      mediaRecorder = new MediaRecorder(micStream);
+    }
+  } catch(e) {
+    console.warn('Mic unavailable:', e);
+  }
+
+  // Motion
+  if (sensorMode !== 'mic' && typeof DeviceMotionEvent !== 'undefined') {
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+      try { await DeviceMotionEvent.requestPermission(); } catch(e){}
+    }
+    window.addEventListener('devicemotion', onMotion);
+    motionActive = true;
+  }
+
+  isTracking   = true;
+  trackingStart = new Date();
+  clips        = [];
+  noiseTriggered = false;
+  motionTriggered = false;
+
+  document.getElementById('startBtn').textContent = '⏹ Arrêter le suivi';
+  document.getElementById('startBtn').classList.add('tracking');
+  document.getElementById('sleepStatus').textContent = 'Suivi en cours…';
+  document.getElementById('sleepSub').textContent    = 'Micro + accéléromètre actifs';
+  document.getElementById('sleepMoon').textContent   = '😴';
+  document.getElementById('sleepTimeline').style.display = 'block';
+  document.getElementById('clipsSection').style.display  = 'block';
+
+  const a = alarms.find(x => x.enabled);
+  document.getElementById('tlStart').textContent  = pad(trackingStart.getHours())+':'+pad(trackingStart.getMinutes());
+  document.getElementById('tlAlarm').textContent  = a ? pad(a.h)+':'+pad(a.m) : '—';
+
+  updateSensorCards();
+  startWaveAnim();
+  startDurationTimer();
+  startPhaseSimulation();
+  clipCheckInterval = setInterval(checkClipTrigger, 500);
+}
+
+function stopTracking() {
+  isTracking = false;
+  if (micStream)   { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  if (micCtx)      { micCtx.close(); micCtx = null; micAnalyser = null; }
+  if (motionActive){ window.removeEventListener('devicemotion', onMotion); motionActive = false; }
+  clearInterval(trackDurationInterval);
+  clearInterval(waveInterval);
+  clearInterval(phaseInterval);
+  clearInterval(clipCheckInterval);
+
+  document.getElementById('startBtn').textContent = 'Démarrer le suivi manuellement';
+  document.getElementById('startBtn').classList.remove('tracking');
+  document.getElementById('sleepStatus').textContent = 'Suivi terminé';
+  document.getElementById('sleepSub').textContent    = 'Retrouve ton rapport ci-dessous';
+  document.getElementById('sleepMoon').textContent   = '🌅';
+
+  // Show morning report
+  if (trackingStart) {
+    const dur  = Date.now() - trackingStart;
+    const dh   = Math.floor(dur/3600000), dm = Math.floor((dur%3600000)/60000);
+    document.getElementById('morningReport').style.display = 'block';
+    document.getElementById('repDuration').textContent = dh+'h '+pad(dm);
+    document.getElementById('repClips').textContent    = clips.length;
+    document.getElementById('repPhase').textContent    = sleepPhase;
+    document.getElementById('repNoise').textContent    = currentNoiseLvl > 0 ? Math.round(currentNoiseLvl)+'dB' : 'Calme';
+  }
+
+  // Reset sensors
+  ['micCard','motionCard','phaseCard'].forEach(id => {
+    document.getElementById(id).classList.remove('active','motion');
+  });
+  document.getElementById('micVal').textContent    = 'En attente';
+  document.getElementById('motionVal').textContent = 'En attente';
+  document.getElementById('phaseVal').textContent  = '—';
+
+  stopWaveAnim();
+}
+
+// ── MICROPHONE ANALYSIS ──
+function getMicLevel() {
+  if (!micAnalyser) return 0;
+  const data = new Uint8Array(micAnalyser.frequencyBinCount);
+  micAnalyser.getByteFrequencyData(data);
+  const avg = data.reduce((a,b) => a+b, 0) / data.length;
+  return avg;
+}
+
+// ── MOTION ──
+function onMotion(e) {
+  const acc = e.accelerationIncludingGravity || {};
+  const dx = Math.abs((acc.x||0) - lastMotion.x);
+  const dy = Math.abs((acc.y||0) - lastMotion.y);
+  const dz = Math.abs((acc.z||0) - lastMotion.z);
+  motionLevel = dx + dy + dz;
+  lastMotion  = { x: acc.x||0, y: acc.y||0, z: acc.z||0 };
+}
+
+// ── CLIP DETECTION (noise + motion at same time) ──
+function checkClipTrigger() {
+  if (!isTracking) return;
+  const noise  = getMicLevel();
+  const moving = motionLevel > 2.5;
+  const loud   = noise > 30;
+  currentNoiseLvl = noise;
+
+  // Update sensor cards
+  updateSensorCards(noise, moving);
+
+  if (loud && moving && sensorMode === 'both') {
+    if (!noiseTriggered) { noiseTriggered = true; motionTriggered = true; saveClip(noise); }
+  } else if (loud && sensorMode === 'mic') {
+    if (!noiseTriggered) { noiseTriggered = true; saveClip(noise); }
+  } else if (moving && sensorMode === 'motion') {
+    if (!motionTriggered) { motionTriggered = true; saveClip(noise); }
+  } else {
+    noiseTriggered = false; motionTriggered = false;
+  }
+}
+
+function saveClip(noiseLevel) {
+  const now   = new Date();
+  const clip  = {
+    id:   Date.now(),
+    time: pad(now.getHours())+':'+pad(now.getMinutes()),
+    noise: Math.round(noiseLevel),
+    audioURL: null,
+    audioName: null
+  };
+
+  // Record 15s audio if mic available
+  if (mediaRecorder && mediaRecorder.state === 'inactive') {
+    const chunks = [];
+    mediaRecorder.ondataavailable = e => chunks.push(e.data);
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(chunks, { type:'audio/webm' });
+      clip.audioURL = URL.createObjectURL(blob);
+      renderClips();
+    };
+    mediaRecorder.start();
+    setTimeout(() => { try { mediaRecorder.stop(); } catch(e){} }, 15000);
+  }
+
+  clips.push(clip);
+  document.getElementById('clipCount').textContent = clips.length;
+  renderClips();
+}
+
+function renderClips() {
+  const list = document.getElementById('clipsList');
+  list.innerHTML = '';
+  if (!clips.length) {
+    list.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:12px 16px">Aucun moment agité détecté</div>';
+    return;
+  }
+  [...clips].reverse().forEach(clip => {
+    const div = document.createElement('div');
+    div.className = 'clip-item';
+    div.innerHTML = `
+      <button class="clip-play" onclick="playClip('${clip.id}')">▶</button>
+      <div class="clip-info">
+        <div class="clip-time">${clip.time}</div>
+        <div class="clip-desc">Son + mouvement · ${clip.noise > 50 ? 'fort' : 'modéré'}</div>
+      </div>
+      <span class="clip-badge both">Agité</span>`;
+    list.appendChild(div);
+  });
+}
+
+function playClip(id) {
+  const clip = clips.find(c => c.id === +id);
+  if (!clip || !clip.audioURL) { alert('Clip audio non disponible (permission micro requise)'); return; }
+  new Audio(clip.audioURL).play();
+}
+
+// ── SENSOR CARDS ──
+function updateSensorCards(noise, moving) {
+  if (!isTracking) return;
+  const mc  = document.getElementById('micCard');
+  const mv  = document.getElementById('micVal');
+  const moc = document.getElementById('motionCard');
+  const mov = document.getElementById('motionVal');
+  const pc  = document.getElementById('phaseCard');
+  const pv  = document.getElementById('phaseVal');
+
+  if (noise !== undefined) {
+    const loud = noise > 30;
+    mc.className  = 'sensor-card' + (loud ? ' active' : '');
+    mv.className  = 'sensor-val'  + (loud ? ' alert'  : '');
+    mv.textContent = noise > 60 ? 'Fort 🔊' : noise > 30 ? 'Modéré' : 'Calme 🤫';
+  } else {
+    mc.className  = micAnalyser ? 'sensor-card active' : 'sensor-card';
+    mv.textContent = micAnalyser ? 'Actif' : 'Indisponible';
+  }
+
+  if (moving !== undefined) {
+    moc.className  = 'sensor-card' + (moving ? ' motion' : '');
+    mov.className  = 'sensor-val'  + (moving ? ' alert'  : '');
+    mov.textContent = moving ? 'Mouvement !' : 'Immobile';
+  } else {
+    moc.className  = motionActive ? 'sensor-card motion' : 'sensor-card';
+    mov.textContent = motionActive ? 'Actif' : 'Indisponible';
+  }
+
+  pc.className   = 'sensor-card active';
+  pv.textContent = sleepPhase;
+}
+
+// ── PHASE SIMULATION (based on motion + time) ──
+function startPhaseSimulation() {
+  const phases = ['Léger','Profond','Léger','REM','Léger','Profond','REM'];
+  let i = 0;
+  document.getElementById('phaseVal').textContent = phases[0];
+  sleepPhase = phases[0];
+  phaseInterval = setInterval(() => {
+    if (!isTracking) return;
+    i = (i + 1) % phases.length;
+    sleepPhase = phases[i];
+    document.getElementById('phaseVal').textContent = sleepPhase;
+  }, 90000); // rotate every 90s (simulated)
+}
+
+// ── DURATION TIMER ──
+function startDurationTimer() {
+  const a = alarms.find(x => x.enabled);
+  trackDurationInterval = setInterval(() => {
+    if (!isTracking || !trackingStart) return;
+    const dur = Date.now() - trackingStart;
+    const dh  = Math.floor(dur/3600000), dm = Math.floor((dur%3600000)/60000);
+    document.getElementById('trackDuration').textContent = dh+'h '+pad(dm);
+    // Timeline fill
+    const goal = (profile.sleepGoal || 8) * 3600000;
+    const pct  = Math.min(100, (dur / goal) * 100);
+    document.getElementById('timelineFill').style.width = pct + '%';
+  }, 10000);
+}
+
+// ── WAVEFORM ANIMATION ──
+function startWaveAnim() {
+  const bars = document.querySelectorAll('.wave-bar');
+  document.getElementById('waveform').classList.add('live');
+  waveInterval = setInterval(() => {
+    const noise = getMicLevel();
+    bars.forEach(b => {
+      const h = isTracking ? Math.max(4, Math.min(28, (Math.random() * (noise > 20 ? noise/3 : 8) + 4))) : 4;
+      b.style.height = h + 'px';
+    });
+  }, 120);
+}
+function stopWaveAnim() {
+  clearInterval(waveInterval);
+  document.getElementById('waveform').classList.remove('live');
+  document.querySelectorAll('.wave-bar').forEach(b => b.style.height = '4px');
+}
+
+// ── BEDTIME NOTIFICATION ──
+let bedtimeCountdownSec = 0;
+function scheduleBedtimeNotif() {
+  const a = alarms.find(x => x.enabled);
+  if (!a) return;
+  const goal = (profile.sleepGoal || 8) * 60; // minutes
+  const now  = new Date();
+  // bedtime = alarm - sleepGoal
+  let bedH = a.h, bedM = a.m - goal;
+  while (bedM < 0) { bedM += 60; bedH--; }
+  bedH = ((bedH % 24) + 24) % 24;
+
+  // Notif 20min before bedtime
+  let notifH = bedH, notifM = bedM - 20;
+  while (notifM < 0) { notifM += 60; notifH--; }
+  notifH = ((notifH % 24) + 24) % 24;
+
+  clearInterval(bedtimeInterval);
+  clearTimeout(bedtimeTimer);
+
+  const checkBedtime = () => {
+    if (isTracking) return;
+    const n = new Date();
+    if (n.getHours() === notifH && n.getMinutes() === notifM) showBedtimeBanner();
+  };
+  bedtimeInterval = setInterval(checkBedtime, 30000);
+}
+
+function showBedtimeBanner() {
+  document.getElementById('bedtimeBanner').classList.remove('hidden');
+  bedtimeCountdownSec = 20 * 60;
+  const cdEl = document.getElementById('bannerCountdown');
+  const countdown = setInterval(() => {
+    bedtimeCountdownSec--;
+    const m = Math.floor(bedtimeCountdownSec / 60), s = bedtimeCountdownSec % 60;
+    cdEl.textContent = pad(m)+':'+pad(s);
+    if (bedtimeCountdownSec <= 0) {
+      clearInterval(countdown);
+      dismissBedtime();
+      startTracking();
+    }
+  }, 1000);
+}
+
+function dismissBedtime() {
+  document.getElementById('bedtimeBanner').classList.add('hidden');
+}
+
+// ── PROFILE ──────────────────────────────────────────────────────────────────
+let profile = { name:'', age: null, sleepGoal: 8, photo: null };
+let profileDirty = false;
+
+function markProfileDirty() {
+  profileDirty = true;
+  const btn = document.getElementById('saveProfileBtn');
+  btn.classList.remove('saved');
+  btn.textContent = 'Enregistrer le profil';
+}
+
+function updateProfileDisplay() {
+  const name = document.getElementById('profileName').value.trim();
+  const initial = name ? name[0].toUpperCase() : 'T';
+  document.getElementById('profileInitial').textContent = initial;
+  markProfileDirty();
+}
+
+function updateSleepGoal(val) {
+  const h = Math.floor(val), m = Math.round((val - h) * 60);
+  document.getElementById('sleepGoalLabel').textContent = h+'h '+(m?pad(m):'00');
+  profile.sleepGoal = +val;
+  updateBedtimeCalc();
+  updateSleepReco();
+  markProfileDirty();
+}
+
+function updateBedtimeCalc() {
+  const a = alarms.find(x => x.enabled);
+  if (!a) {
+    document.getElementById('bedtimeCalc').textContent    = '--:--';
+    document.getElementById('bedtimeCalcSub').textContent = 'Configure une alarme d\'abord';
+    return;
+  }
+  const goal = profile.sleepGoal * 60;
+  let bh = a.h, bm = a.m - goal;
+  while (bm < 0) { bm += 60; bh--; }
+  bh = ((bh % 24) + 24) % 24;
+  document.getElementById('bedtimeCalc').textContent    = pad(bh)+':'+pad(bm);
+  document.getElementById('bedtimeCalcSub').textContent = `Pour un réveil à ${pad(a.h)}:${pad(a.m)} avec ${Math.floor(profile.sleepGoal)}h de sommeil`;
+}
+
+function updateSleepReco() {
+  const age = +document.getElementById('profileAge').value;
+  let reco = '7–9h';
+  if (age < 6)  reco = '10–13h';
+  else if (age < 13) reco = '9–11h';
+  else if (age < 18) reco = '8–10h';
+  else if (age < 65) reco = '7–9h';
+  else reco = '7–8h';
+  document.getElementById('sleepRecoText').textContent = '💡 Recommandation pour ton âge : ' + reco;
+}
+
+function onPhoto(input) {
+  const f = input.files[0]; if (!f) return;
+  const url = URL.createObjectURL(f);
+  profile.photo = url;
+  const av = document.getElementById('profileAvatar');
+  av.style.backgroundImage = `url(${url})`;
+  av.style.backgroundSize  = 'cover';
+  av.querySelector('span').style.display = 'none';
+  markProfileDirty();
+}
+
+function saveProfile() {
+  if (!profileDirty) return;
+  profile.name      = document.getElementById('profileName').value.trim();
+  profile.age       = +document.getElementById('profileAge').value || null;
+  profile.sleepGoal = +document.getElementById('sleepGoalSlider').value;
+  const initial = profile.name ? profile.name[0].toUpperCase() : 'T';
+  // Update all avatars
+  document.querySelectorAll('.avatar').forEach(a => { a.textContent = ''; a.textContent = initial; });
+  document.getElementById('profileInitial').textContent = initial;
+  if (profile.name) {
+    document.querySelector('#screen-home .title').textContent = `Bonne nuit, ${profile.name} 🌙`;
+  }
+  document.getElementById('profileSettingSub').textContent = profile.name
+    ? `${profile.name} · ${Math.floor(profile.sleepGoal)}h d'objectif`
+    : 'Configurer prénom, âge, objectif';
+  scheduleBedtimeNotif();
+  updateBedtimeCalc();
+  // Mark as saved — grey out button
+  profileDirty = false;
+  const btn = document.getElementById('saveProfileBtn');
+  btn.classList.add('saved');
+  btn.textContent = '✓ Profil enregistré';
+}
+
+// ── SENSOR MODE ───────────────────────────────────────────────────────────────
+let sensorMode = 'both'; // 'both' | 'mic' | 'motion'
+
+function setSensorMode(mode) {
+  sensorMode = mode;
+  document.querySelectorAll('.sensor-mode-btn').forEach(b => {
+    b.classList.toggle('sel', b.dataset.mode === mode);
+  });
+  const labels = { both:'Micro + Accéléromètre', mic:'Micro uniquement', motion:'Accéléromètre uniquement' };
+  document.getElementById('sensorModeSub').textContent = labels[mode];
+  // Update sensor cards visibility on sleep screen
+  const micCard    = document.getElementById('micCard');
+  const motionCard = document.getElementById('motionCard');
+  if (micCard)    micCard.style.opacity    = (mode === 'motion') ? '0.35' : '1';
+  if (motionCard) motionCard.style.opacity = (mode === 'mic')    ? '0.35' : '1';
+}
+
+// ── FALLBACK BEEP (when no music chosen) ──────────────────────────────────────
+function playFallbackBeep() {
+  try {
+    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(440, ctx.currentTime);
+    osc.frequency.setValueAtTime(520, ctx.currentTime + 0.3);
+    osc.frequency.setValueAtTime(440, ctx.currentTime + 0.6);
+    gain.gain.setValueAtTime(0.01, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(globalMax / 100, ctx.currentTime + 2);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 60);
+    // Store refs so stopAudio can kill it
+    audioCtx = ctx; audioSrc = osc; audioGain = gain;
+  } catch(e) { console.warn('beep error', e); }
+}
+
+function refreshHomeBars() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dayNames = ['D','L','M','M','J','V','S'];
+  const barsEl = document.getElementById('homeWeekBars');
+  if (!barsEl) return;
+  barsEl.innerHTML = '';
+  const goal = (profile.sleepGoal||8)*60;
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate()-i);
+    const str = d.toLocaleDateString('fr-FR');
+    const e   = nightLog.find(x => x.date === str);
+    const dur = e ? parseDur(e.dur) : null;
+    const pct = dur ? Math.min(96, Math.round((dur/((profile.sleepGoal||8)*60*1.3))*96)) : 4;
+    const isToday = i === 0;
+    const cls = !dur ? '' : dur >= goal ? 'good' : dur >= goal*0.85 ? 'ok' : 'bad';
+    barsEl.innerHTML += `<div class="bar-wrap">
+      <div class="bar ${cls}${isToday&&dur?' today':''}" style="height:${pct}%"></div>
+      <div class="bar-day" style="color:${isToday?'var(--accent)':'var(--muted)'}">${dayNames[d.getDay()]}</div>
+    </div>`;
+  }
+}
+
+
+let selectedMood = null;
+let nightLog = []; // historique des nuits
+
+function openMorningCheckin() {
+  selectedMood = null;
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('sel'));
+  document.getElementById('checkinHR').value    = '';
+  document.getElementById('checkinSpo2').value  = '';
+  document.getElementById('checkinNote').value  = '';
+
+  // Pré-remplir la durée si suivi actif cette nuit
+  const dur = trackingStart
+    ? (() => { const d = Date.now()-trackingStart; return Math.floor(d/3600000)+'h'+pad(Math.floor((d%3600000)/60000)); })()
+    : '';
+  document.getElementById('checkinDur').value = dur;
+
+  // Sous-titre avec heure
+  const now = new Date();
+  document.getElementById('checkinSub').textContent =
+    `Il est ${pad(now.getHours())}:${pad(now.getMinutes())} — comment s'est passée ta nuit ?`;
+
+  document.getElementById('checkinOverlay').classList.add('open');
+}
+
+function closeMorningCheckin() {
+  document.getElementById('checkinOverlay').classList.remove('open');
+}
+
+function selectMood(btn) {
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+  selectedMood = btn.dataset.mood;
+}
+
+function saveMorningCheckin() {
+  const entry = {
+    date:  new Date().toLocaleDateString('fr-FR'),
+    time:  new Date().toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }),
+    mood:  selectedMood,
+    hr:    document.getElementById('checkinHR').value   || null,
+    spo2:  document.getElementById('checkinSpo2').value || null,
+    dur:   document.getElementById('checkinDur').value  || null,
+    note:  document.getElementById('checkinNote').value.trim() || null,
+  };
+  nightLog.push(entry);
+  closeMorningCheckin();
+
+  // Mettre à jour l'écran accueil
+  if (entry.hr)   document.querySelector('#screen-home .stat-tile:nth-child(1) .val').textContent = entry.hr;
+  if (entry.spo2) document.querySelector('#screen-home .stat-tile:nth-child(2) .val').textContent = entry.spo2+'%';
+  refreshHomeBars();
+
+  showToast(entry.mood ? '✓ Nuit enregistrée ' + moodEmoji(entry.mood) : '✓ Nuit enregistrée');
+}
+
+function moodEmoji(mood) {
+  return { exhausted:'😵', tired:'😴', ok:'😐', good:'😊', great:'🤩' }[mood] || '';
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = `position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#1a2f5a;border:1px solid var(--accent);color:var(--text);padding:12px 24px;border-radius:20px;font-size:14px;font-weight:600;z-index:999;animation:fadeUp .3s ease;white-space:nowrap`;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+// ── INIT SLEEP SCREEN ──
+updateBedtimeCalc();
+refreshHomeBars();
+
+// ── TEST BEDTIME BANNER (décommenter pour tester) ──
+// setTimeout(showBedtimeBanner, 2000);
+
+
+</script>
+</body>
+</html>
